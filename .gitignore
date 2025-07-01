@@ -1,0 +1,9 @@
+/node_modules
+/.devport_cache
+/manifest.json
+/devport-lab.exe
+Thumbs.db
+*.log
+.env
+.env.*
+!.env.example
