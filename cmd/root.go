@@ -74,4 +74,11 @@ func initConfig() {
 	viper.SetDefault("root_directory", "node_modules")
 	viper.SetDefault("cache_directory", ".devport_cache/objects")
 	viper.SetDefault("manifest_file", "manifest.json")
+
+	viper.SetDefault("s3.endpoint", "http://localhost:9000")
+	viper.SetDefault("s3.bucket", "devport-cache")
+	viper.SetDefault("s3.region", "us-east-1")
+	viper.SetDefault("s3.access_key_id", "devport-admin")
+	viper.SetDefault("s3.secret_access_key", "devport-password")
+	viper.SetDefault("s3.use_ssl", false)
 }
