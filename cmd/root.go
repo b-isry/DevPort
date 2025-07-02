@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -10,6 +11,7 @@ import (
 )
 
 var cfgFile string
+var logger *slog.Logger
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -18,6 +20,21 @@ var rootCmd = &cobra.Command{
 	Long: `DevPort is a next-generation Node dependency engine that virtualizes node_modules.
 It creates a shared, content-addressable cache to make dependency management
 across machines and branches seamless and instant.`,
+
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		verbose, _ := cmd.Flags().GetBool("verbose")
+
+		var logLevel slog.Level
+		if verbose {
+			logLevel = slog.LevelDebug
+		} else {
+			logLevel = slog.LevelInfo
+		}
+		handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+			Level: logLevel,
+		})
+		logger = slog.New(handler)
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -33,6 +50,7 @@ func init() {
 
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./.devport.yaml or $HOME/.devport/config.yaml)")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "enable verbose logging")
 }
 
 func initConfig() {

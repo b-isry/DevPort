@@ -3,9 +3,7 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -13,8 +11,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-
-// rebuildCmd represents the rebuild command
 var rebuildCmd = &cobra.Command{
 	Use:   "rebuild",
 	Short: "Rebuilds node_modules from the local cache using a manifest.",
@@ -30,54 +26,58 @@ func init() {
 	rootCmd.AddCommand(rebuildCmd)
 }
 
-// This is our original rebuildFromCache function.
 func rebuildFromCache() {
-	rebuildRootDir := viper.GetString("root_directory")
-	rebuildCacheDir := viper.GetString("cache_directory")	
-	rebuildManifestFile := viper.GetString("manifest_file")
+	rootDir := viper.GetString("root_directory")
+	cacheDir := viper.GetString("cache_directory")
+	manifestFile := viper.GetString("manifest_file")
+	
+	logger.Info("Starting rebuild from cache...")
 
-	fmt.Println("Starting rebuild from cache...")
-
-	manifestData, err := os.ReadFile(rebuildManifestFile)
+	manifestData, err := os.ReadFile(manifestFile)
 	if err != nil {
-		log.Fatalf("Failed to read manifest file %s: %v. Please run 'scan' first.", rebuildManifestFile, err)
+		logger.Error("Failed to read manifest file. Please run 'scan' first.", "path", manifestFile, "error", err)
+		os.Exit(1)
 	}
 
 	var manifest map[string]string
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
-		log.Fatalf("Failed to parse manifest JSON: %v", err)
+		logger.Error("Failed to parse manifest JSON", "error", err)
+		os.Exit(1)
 	}
 
-	fmt.Printf("Removing old directory: %s\n", rebuildRootDir)
-	if err := os.RemoveAll(rebuildRootDir); err != nil {
-		log.Fatalf("Failed to remove old %s: %v", rebuildRootDir, err)
+	logger.Info("Removing old directory", "path", rootDir)
+	if err := os.RemoveAll(rootDir); err != nil {
+		logger.Error("Failed to remove old directory", "path", rootDir, "error", err)
+		os.Exit(1)
 	}
 
 	for destinationPath, hashString := range manifest {
-		sourcePath := filepath.Join(rebuildCacheDir, hashString)
+		logger.Debug("Rebuilding file", "path", destinationPath) // A good debug message
+		sourcePath := filepath.Join(cacheDir, hashString)
 		destinationDir := filepath.Dir(destinationPath)
 		if err := os.MkdirAll(destinationDir, 0755); err != nil {
-			log.Fatalf("Failed to create directory %s: %v", destinationDir, err)
+			logger.Error("Failed to create directory during rebuild", "path", destinationDir, "error", err)
+			os.Exit(1) // This is a fatal error
 		}
 
 		sourceFile, err := os.Open(sourcePath)
 		if err != nil {
-			log.Printf("FATAL: Cache is corrupt. Could not open cache file %s: %v", sourcePath, err)
-			continue
+			logger.Error("Cache is corrupt. Could not open cache file.", "path", sourcePath, "error", err)
+			os.Exit(1) // Also fatal, the cache is broken
 		}
 		defer sourceFile.Close()
 
 		destFile, err := os.Create(destinationPath)
 		if err != nil {
-			log.Printf("Failed to create destination file %s: %v", destinationPath, err)
+			logger.Warn("Failed to create destination file, skipping", "path", destinationPath, "error", err)
 			continue
 		}
 		defer destFile.Close()
 
 		if _, err := io.Copy(destFile, sourceFile); err != nil {
-			log.Printf("Failed to copy content to %s: %v", destinationPath, err)
+			logger.Warn("Failed to copy content, file may be corrupt", "path", destinationPath, "error", err)
 		}
 	}
 
-	fmt.Println("\nRebuild complete.")
+	logger.Info("Rebuild complete.")
 }
