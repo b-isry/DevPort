@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -30,27 +33,30 @@ func init() {
 
 func scanAndCache() {
 	rootDir := viper.GetString("root_directory")
-	cacheDir := viper.GetString("cache_directory")
 	manifestFile := viper.GetString("manifest_file")
+	s3Bucket := viper.GetString("s3.bucket") 
 
-	manifest := make(map[string]string)
-	// MODIFIED: Use our new logger
-	logger.Info("Starting scan", "directory", rootDir)
-
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
-		// MODIFIED: Structured error logging
-		logger.Error("Failed to create cache directory", "path", cacheDir, "error", err)
+	s3Client, err := newS3Client()
+	if err != nil {
+		logger.Error("Failed to create S3 client", "error", err)
 		os.Exit(1)
 	}
 
-	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+	manifest := make(map[string]string)
+	logger.Info("Starting scan", "directory", rootDir)
+
+	// if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	// 	logger.Error("Failed to create cache directory", "path", cacheDir, "error", err)
+	// 	os.Exit(1)
+	// }
+
+	err = filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if !info.IsDir() {
 			file, err := os.Open(path)
 			if err != nil {
-				// MODIFIED: Use WARN for skippable errors
 				logger.Warn("Could not open file, skipping", "path", path, "error", err)
 				return nil
 			}
@@ -64,18 +70,25 @@ func scanAndCache() {
 			hashString := fmt.Sprintf("%x", hash.Sum(nil))
 			manifest[path] = hashString
 
-			cachedFilePath := filepath.Join(cacheDir, hashString)
-			if _, err := os.Stat(cachedFilePath); os.IsNotExist(err) {
-				file.Seek(0, 0)
-				newCacheFile, err := os.Create(cachedFilePath)
-				if err != nil {
-					logger.Warn("Could not create cache file", "path", path, "error", err)
-					return nil
-				}
-				defer newCacheFile.Close()
-				io.Copy(newCacheFile, file)
-				// MODIFIED: Use DEBUG for verbose messages
-				logger.Debug("Cached new object", "path", path)
+			_, err = s3Client.HeadObject(context.TODO(), &s3.HeadObjectInput{
+				Bucket: aws.String(s3Bucket),
+				Key:    aws.String(hashString),
+			})
+			if err == nil {
+				logger.Debug("Object already exists in cache, skipping upload", "hash", hashString)
+				return nil
+			}
+			logger.Debug("Object not found in cache, uploading", "hash", hashString)
+			file.Seek(0, 0) // Reset file pointer to the beginning
+			_, err = s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+				Bucket:      aws.String(s3Bucket),
+				Key: 	   aws.String(hashString),
+				Body:        file,
+			})
+			if err != nil {
+				logger.Warn("Failed to upload file to S3", "path", path, "error", err)
+			} else {
+				logger.Debug("Successfully uploaded new object", "hash", hashString)
 			}
 		}
 		return nil
