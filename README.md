@@ -1,6 +1,4 @@
-# DevPort  teleport
-
-![DevPort Banner](https://user-images.githubusercontent.com/10933919/223243983-9b57576a-1158-450f-8187-1b327b4c47b5.png)
+# DevPort
 
 
 **Teleport your `node_modules`. Instant, shareable, and cloud-native.**
@@ -30,8 +28,6 @@ Instead of running `npm install`, you just run `devport pull`.
 
 DevPort fetches the exact `node_modules` state for your current commit from the cache and reconstructs it on your machine in seconds.
 
-![Devport Workflow Diagram](https://user-images.githubusercontent.com/10933919/223244195-23c2a39d-de56-4277-a178-57db45f56475.png)
-
 
 ## Features
 
@@ -53,7 +49,7 @@ Unzip the archive and place the `devport` binary in a directory that is in your 
 
 DevPort uses two configuration files in your project root.
 
-**A. `devport.yaml` (Safe to commit)**
+**A. `.devport.yaml` (Safe to commit)**
 
 This file contains non-secret configuration.
 
@@ -67,8 +63,9 @@ s3:
   bucket: "devport-cache"
   region: "us-east-1"
   use_ssl: false # Set to true for most cloud providers
+```
 
-**B. `devport.secret.yaml` (DO NOT commit - add to `.gitignore`)**
+**B. `.devport.secret.yaml` (DO NOT commit - add to `.gitignore`)**
 
 This file contains your private credentials.
 
@@ -77,7 +74,7 @@ This file contains your private credentials.
 s3:
   access_key_id: "YOUR_S3_ACCESS_KEY"
   secret_access_key: "YOUR_S3_SECRET_KEY"
-
+```
 
 **2. The `devport push` Block:**
 
@@ -91,7 +88,7 @@ It scans your `node_modules`, uploads any new files to the shared S3 cache, and 
 ```bash
 # After running `npm install` and `git commit`...
 devport push
-
+```
 
 **3. The `devport pull` Block:**
 
@@ -105,13 +102,13 @@ It checks your current git commit, finds the correct manifest in the S3 cache, a
 ```bash
 # After running `git pull` or `git checkout`...
 devport pull
-
+```
 
 **4. The `Roadmap` and `Contributing` Lists:**
 
 These sections should use Markdown list syntax (`-` or `*`) to render as bullet points.
 
-```markdown
+
 ## Roadmap
 
 DevPort is currently an MVP. Here's what's next:
