@@ -1,9 +1,12 @@
-// utils/git.go
 package utils
 
 import (
 	"bytes" 
-	"errors" 
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"crypto/sha256"
 	"os/exec"
 	"strings"
 )
@@ -30,4 +33,36 @@ func GetCurrentCommitHash() (string, error) {
 	commitHash := strings.TrimSpace(out.String())
 	
 	return commitHash, nil
+}
+
+func GetLockFileHash() (string, error) {
+	lockFiles := []string{"pnpm-lock.yaml", "yarn.lock", "package-lock.json"}
+	var lockFilePath string
+	
+	for _, file := range lockFiles {
+		if _, err := os.Stat(file); err == nil {
+			lockFilePath = file
+			break
+		}
+	}
+
+	if lockFilePath == "" {
+		return "", errors.New("no lock file found (pnpm-lock.yaml, yarn.lock, or package-lock.json)")
+	}
+
+	file, err := os.Open(lockFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open lock file %s: %w", lockFilePath, err)
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", fmt.Errorf("failed to hash lock file %s: %w", lockFilePath, err)
+	}
+	
+	hashString := fmt.Sprintf("%x", hash.Sum(nil))
+
+	return hashString, nil
 }

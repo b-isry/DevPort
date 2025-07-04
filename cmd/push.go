@@ -32,6 +32,13 @@ func init() {
 }
 
 func pushCache() {
+	lockFileHash, err := utils.GetLockFileHash()
+	if err != nil {
+		logger.Error("Failed to get lock file hash", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("Pushing cache for dependency signature", "hash", lockFileHash)
+
 	commitHash, err := utils.GetCurrentCommitHash()
 	if err != nil {
 		logger.Error("Failed to get current commit hash", "error", err)
@@ -109,7 +116,7 @@ func pushCache() {
 		logger.Error("Error generating JSON", "error", err)
 		os.Exit(1)
 	}
-	manifestKey := "manifests/" + commitHash + ".json"
+	manifestKey := "manifests/" + lockFileHash + ".json"
 
 	_, err = s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket: aws.String(s3Bucket),

@@ -34,6 +34,13 @@ func init() {
 }
 
 func pullCache() {
+	lockFileHash, err := utils.GetLockFileHash()
+	if err != nil {
+		logger.Error("Failed to get lock file hash", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("Pulling cache for dependency signature", "hash", lockFileHash)
+
 	commitHash, err := utils.GetCurrentCommitHash()
 	if err != nil {
 		logger.Error("Failed to get current commit hash", "error", err)
@@ -72,7 +79,7 @@ func pullCache() {
 		})
 
 
-	manifestKey := "manifests/" + commitHash + ".json"
+	manifestKey := "manifests/" + lockFileHash + ".json"
 
 	logger.Info("Fetching remote manifest", "path", manifestKey)
 
@@ -83,7 +90,7 @@ func pullCache() {
 	if err != nil {
 		var notFoundError *types.NoSuchKey
 		if errors.As(err, &notFoundError) {
-			logger.Error("Cache miss. No cache found for this commit.", "commit", commitHash)
+			logger.Error("Cache miss. No cache found for this dependency signature.", "hash", lockFileHash)
 			logger.Info("Please run 'npm install' and then 'devport push' on the source machine to populate the cache.")
 		} else {
 			logger.Error("Failed to download manifest from S3", "path", manifestKey, "error", err)
@@ -119,7 +126,7 @@ func pullCache() {
 		})
 		if err != nil {
 			logger.Warn("Failed to retrieve object from S3, skipping", "bucket", bucket, "key", hashString, "error", err)
-			continue // Skip this file if it cannot be retrieved
+			continue
 		}
 		defer result.Body.Close()
 
