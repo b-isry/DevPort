@@ -1,0 +1,9 @@
+# The root directory of the dependencies you want to cache.
+root_directory: "node_modules"
+
+# S3-Compatible Cloud Storage Configuration
+s3:
+  endpoint: "http://localhost:9000"
+  bucket: "devport-cache"
+  region: "us-east-1"
+  use_ssl: false

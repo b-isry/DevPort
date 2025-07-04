@@ -70,6 +70,11 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 }
+	viper.SetConfigFile(".devport.secret.yaml")
+	err := viper.MergeInConfig()
+	if err == nil {
+		fmt.Println("Using secret config file:", viper.ConfigFileUsed())
+	}
 	viper.SetDefault("root_directory", "node_modules")
 
 	viper.SetDefault("s3.endpoint", "http://localhost:9000")

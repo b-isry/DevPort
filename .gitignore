@@ -1,5 +1,6 @@
 /node_modules
 /devport-lab.exe
+*.secret.yaml
 *.log
 .env
 .env.*
