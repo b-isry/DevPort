@@ -10,12 +10,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+    version = "dev" 
+    commit  = "none"
+    date    = "unknown"
+)
+
 var cfgFile string
 var logger *slog.Logger
 
 var rootCmd = &cobra.Command{
 	Use:   "devport",
 	Short: "A blazingly fast dependency teleporter for Node.js",
+	Version: fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date),
 	Long: `DevPort is a next-generation Node dependency engine that virtualizes node_modules.
 It creates a shared, content-addressable cache to make dependency management
 across machines and branches seamless and instant.`,
@@ -50,6 +57,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./.devport.yaml or $HOME/.devport/config.yaml)")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "enable verbose logging")
+	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
 }
 
 func initConfig() {

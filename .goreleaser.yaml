@@ -1,0 +1,70 @@
+# .goreleaser.yaml
+# This is the GoReleaser configuration file.
+# For more options, see: https://goreleaser.com/customization/
+version: 1
+
+# Before building, GoReleaser can run some checks.
+before:
+  hooks:
+    # This ensures our Go modules are in a good state.
+    - go mod tidy
+
+# This section defines the actual build process.
+builds:
+  # We define a single build configuration with the ID 'devport'.
+  - id: devport
+    # The entry point of our application.
+    env:
+      # CGO_ENABLED=0 is important for creating static binaries that work everywhere.
+      - CGO_ENABLED=0
+    # The path to your main.go file.
+    main: .
+    # The name of the final binary.
+    binary: devport
+    # Define the platforms we want to build for.
+    goos:
+      - linux
+      - windows
+      - darwin # macOS
+    goarch:
+      - amd64 # Intel
+      - arm64 # Apple Silicon / ARM
+    # Exclude combinations that don't make sense (like windows/arm64 for now).
+    ignore:
+      - goos: windows
+        goarch: arm64
+    # Ldflags allows us to inject variables at build time.
+    # Here, we're injecting the version, commit, and date, which is great for `devport --version`.
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser
+
+# This section defines how to package the binaries.
+archives:
+  - id: devport-archives
+    # We only want to archive the 'devport' build config from above.
+    builds:
+      - devport
+    # This creates a friendlier naming scheme for the archive files.
+    # e.g., devport_0.1.0_windows_amd64.zip
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    # Automatically wrap the binary in a platform-specific folder inside the archive.
+    wrap_in_directory: true
+    # Define the format for each OS.
+    format_overrides:
+      - goos: windows
+        format: zip
+
+# This section generates a checksum file for all artifacts, for security.
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
