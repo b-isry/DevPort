@@ -13,7 +13,6 @@ import (
 var cfgFile string
 var logger *slog.Logger
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "devport",
 	Short: "A blazingly fast dependency teleporter for Node.js",
@@ -72,8 +71,6 @@ func initConfig() {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 }
 	viper.SetDefault("root_directory", "node_modules")
-	viper.SetDefault("cache_directory", ".devport_cache/objects")
-	viper.SetDefault("manifest_file", "manifest.json")
 
 	viper.SetDefault("s3.endpoint", "http://localhost:9000")
 	viper.SetDefault("s3.bucket", "devport-cache")

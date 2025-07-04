@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "chalk": "^5.4.1",
+    "dayjs": "^1.11.13",
     "express": "^5.1.0",
     "lodash": "^4.17.21"
   }
