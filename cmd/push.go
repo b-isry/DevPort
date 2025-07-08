@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"devport-lab/utils"
+	"devport-lab/types"
 	"fmt"
 	"io"
 	"os"
@@ -46,6 +47,9 @@ func pushCache() {
 	}
 	logger.Info("Current commit hash", "hash", commitHash)
 
+	platform := utils.GetPlatformIdentifier()
+	logger.Info("Pushing cache for dependency signature", "hash", lockFileHash, "platform", platform)
+
 	rootDir := viper.GetString("root_directory")
 	s3Bucket := viper.GetString("s3.bucket") 
 
@@ -55,13 +59,34 @@ func pushCache() {
 		os.Exit(1)
 	}
 
-	manifest := make(map[string]string)
-	logger.Info("Starting scan", "directory", rootDir)
+	manifest := types.Manifest{
+		Files: make(map[string]string),
+		NativeModulePaths: []string{},
+	}
+	nativePackagesFound := make(map[string]bool)
+
 
 	err = filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+		if info.Name() == "package.json"{
+			pkgJsonData, err := os.ReadFile(path)
+			if err == nil {
+				var pkgJson map[string]interface{}
+				if json.Unmarshal(pkgJsonData, &pkgJson) == nil {
+					if gyp, ok := pkgJson["gypfile"].(bool); ok && gyp {
+						packageRoot := filepath.Dir(path)
+						if !nativePackagesFound[packageRoot] {
+							manifest.NativeModulePaths = append(manifest.NativeModulePaths, packageRoot)
+							nativePackagesFound[packageRoot] = true
+							logger.Debug("Detected native module", "package", packageRoot)
+						}
+					}
+				}
+			}
+		}
+
 		if !info.IsDir() {
 			file, err := os.Open(path)
 			if err != nil {
@@ -76,7 +101,7 @@ func pushCache() {
 				return nil
 			}
 			hashString := fmt.Sprintf("%x", hash.Sum(nil))
-			manifest[path] = hashString
+			manifest.Files[path] = hashString
 
 			_, err = s3Client.HeadObject(context.TODO(), &s3.HeadObjectInput{
 				Bucket: aws.String(s3Bucket),
@@ -116,7 +141,7 @@ func pushCache() {
 		logger.Error("Error generating JSON", "error", err)
 		os.Exit(1)
 	}
-	manifestKey := "manifests/" + lockFileHash + ".json"
+	manifestKey := "manifests/" + platform + "/" + lockFileHash + ".json"
 
 	_, err = s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket: aws.String(s3Bucket),

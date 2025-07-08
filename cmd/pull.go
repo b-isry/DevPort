@@ -4,16 +4,18 @@ import (
 	"errors"
 	"context"
 	"devport-lab/utils"
+	devportTypes "devport-lab/types"
 	"encoding/json"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -48,6 +50,9 @@ func pullCache() {
 	}
 	logger.Info("Current commit hash", "hash", commitHash)
 
+	platform := utils.GetPlatformIdentifier()
+	logger.Info("Pulling cache for dependency signature", "hash", lockFileHash, "platform", platform)
+
 	rootDir := viper.GetString("root_directory")
 	bucket := viper.GetString("s3.bucket")
 	
@@ -79,7 +84,7 @@ func pullCache() {
 		})
 
 
-	manifestKey := "manifests/" + lockFileHash + ".json"
+	manifestKey := "manifests/" + platform + "/" + lockFileHash + ".json"
 
 	logger.Info("Fetching remote manifest", "path", manifestKey)
 
@@ -105,7 +110,7 @@ func pullCache() {
 		os.Exit(1)
 	}
 
-	var manifest map[string]string
+	var manifest devportTypes.Manifest
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
 		logger.Error("Failed to parse manifest JSON", "error", err)
 		os.Exit(1)
@@ -117,7 +122,7 @@ func pullCache() {
 		os.Exit(1)
 	}
 
-	for destinationPath, hashString := range manifest {
+	for destinationPath, hashString := range manifest.Files {
 		logger.Debug("Rebuilding file", "path", destinationPath)
 
 		result, err := s3Client.GetObject(context.TODO(), &s3.GetObjectInput{
@@ -148,5 +153,22 @@ func pullCache() {
 		}
 	}
 
-	logger.Info("Rebuild complete.")
+	if len(manifest.NativeModulePaths) > 0 {
+		logger.Info("Rebuilding native modules...")
+		
+		for _, modulePath := range manifest.NativeModulePaths {
+			logger.Debug("Rebuilding", "module", modulePath)
+			cmd := exec.Command("npm", "rebuild")
+			cmd.Dir = modulePath
+			
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				logger.Warn("Failed to rebuild native module", "module", modulePath, "error", err, "output", string(output))
+			}
+		}
+		
+		logger.Info("Native module rebuild complete.")
+	}
+
+	logger.Info("Pull complete.")
 }

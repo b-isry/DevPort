@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"os/exec"
 	"strings"
+	"runtime"
 )
 
 func GetCurrentCommitHash() (string, error) {
@@ -65,4 +66,8 @@ func GetLockFileHash() (string, error) {
 	hashString := fmt.Sprintf("%x", hash.Sum(nil))
 
 	return hashString, nil
+}
+
+func GetPlatformIdentifier() string {
+	return runtime.GOOS + "-" + runtime.GOARCH
 }
