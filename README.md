@@ -78,7 +78,7 @@ s3:
 
 **2. The `devport push` Block:**
 
-```markdown
+
 #### `devport push`
 
 Run this command after you've run `npm install` and committed your changes to `package-lock.json`.
@@ -92,7 +92,7 @@ devport push
 
 **3. The `devport pull` Block:**
 
-```markdown
+
 #### `devport pull`
 
 Run this command after cloning a repo, switching branches, or pulling new changes.
